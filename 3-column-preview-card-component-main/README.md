@@ -29,7 +29,6 @@ Users should be able to:
 
 ### Links
 
-- Solution URL: [View Source Code](https://github.com/Sushil333/frontend-mentor/tree/master/3-column-preview-card-component-main)
 - Live Site URL: [Click here to view](https://sushil333.github.io/frontend-mentor/3-column-preview-card-component-main/)
 
 ## My process
