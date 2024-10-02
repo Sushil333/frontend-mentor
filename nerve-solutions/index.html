@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Strategy Viewer</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      .main-div {
+        display: flex;
+        flex-direction: column;
+        gap: 1em;
+      }
+
+      .toggle-group {
+        display: flex;
+        justify-content: space-around;
+        border-radius: 1em;
+        overflow: hidden;
+        background-color: #f8f8fa;
+        padding: .5em;
+      }
+
+      .toggle-button {
+        padding: 10px 20px;
+        background-color: transparent;
+        color: #7985a4;
+        cursor: pointer;
+        flex: 1;
+        text-align: center;
+        transition: background-color 0.3s ease;
+        border-radius: 1em;
+      }
+
+      .toggle-button.active {
+        background-color: #2850e7;
+        color: white;
+        font-weight: bold;
+      }
+
+      .dropdown {
+        border-radius: 1em;
+        border: 1px solid #ced5e8;
+        padding: 1em;
+        margin-bottom: 20px;
+        background: url("data:image/svg+xml,<svg height='15px' width='15px' viewBox='0 0 16 16' fill='%232850e7' xmlns='http://www.w3.org/2000/svg'><path d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/></svg>") no-repeat;
+        background-position: calc(100% - 0.75rem) center !important;
+        -moz-appearance:none !important;
+        -webkit-appearance: none !important; 
+        appearance: none !important;
+      }
+
+      .strategy-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .strategy-card {
+        padding: 1em;
+        border: 1px solid #ced5e8;
+        box-sizing: border-box;
+        border-radius: 1em;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .strategy-card small {
+        font-weight: bold;
+        color: #7985a4;
+      }
+
+      .empty-state {
+        font-size: 18px;
+        line-height: 1.8em;
+        color: #888;
+        margin-top: 20px;
+        text-align: center;
+      }
+
+    </style>
+  </head>
+  <body>
+    <h1>Strategy Selection</h1>
+
+    <div class="main-div">
+      <!-- Toggle Buttons for Views -->
+      <div class="toggle-group" id="viewToggle">
+        <!-- Buttons will be dynamically populated here -->
+      </div>
+
+      <!-- Dropdown for Dates -->
+      <select class="dropdown" id="dateSelect">
+        <!-- Date options will be dynamically populated here -->
+      </select>
+
+      <!-- Strategy List -->
+      <div class="strategy-list" id="strategyList">
+        <!-- Strategy cards will be displayed here -->
+      </div>
+
+      <!-- Empty State Message -->
+      <div class="empty-state" id="emptyState" style="display: none">
+        <!-- Empty state message will be shown here -->
+      </div>
+    </div>
+    <script>
+      let selectedView = null;
+      let selectedDate = null;
+
+      // Fetch JSON data asynchronously
+      const fetchData = async (url) => {
+        try {
+          const response = await fetch(url);
+          if (!response.ok) {
+            throw new Error(`Failed to fetch data: ${response.statusText}`);
+          }
+          return await response.json();
+        } catch (error) {
+          console.error(error);
+          alert("Error loading data. Please try again.");
+        }
+      };
+
+      // Populate view toggle buttons
+      const populateViewButtons = (data) => {
+        const viewToggle = document.getElementById("viewToggle");
+        viewToggle.innerHTML = ""; // Clear existing buttons
+
+        data.strategyArray.forEach((strategy, index) => {
+          const button = document.createElement("div");
+          button.classList.add("toggle-button");
+          button.textContent = strategy.View;
+          if (index === 0) {
+            button.classList.add("active");
+            selectedView = strategy.View; // Set default view
+          }
+          button.onclick = () =>
+            handleViewSelection(strategy.View, button, data);
+          viewToggle.appendChild(button);
+        });
+      };
+
+      // Populate date dropdown
+      const populateDateDropdown = (data) => {
+        const dateSelect = document.getElementById("dateSelect");
+        dateSelect.innerHTML = ""; // Clear existing options
+
+        data.dateArray.forEach((date, index) => {
+          const option = document.createElement("option");
+          option.value = date;
+          option.textContent = date;
+          if (index === 0) {
+            option.selected = true;
+            selectedDate = date; // Set default date
+          }
+          dateSelect.appendChild(option);
+        });
+
+        dateSelect.onchange = (e) => {
+          selectedDate = e.target.value;
+          updateStrategyList(data);
+        };
+      };
+
+      // Handle view selection
+      const handleViewSelection = (view, button, data) => {
+        selectedView = view;
+        document
+          .querySelectorAll(".toggle-button")
+          .forEach((btn) => btn.classList.remove("active"));
+        button.classList.add("active");
+        updateStrategyList(data);
+      };
+
+      // Update strategy list based on the selected view and date
+      const updateStrategyList = (data) => {
+        const strategyList = document.getElementById("strategyList");
+        const emptyState = document.getElementById("emptyState");
+        strategyList.innerHTML = ""; // Clear previous strategies
+
+        const selectedStrategyObj = data.strategyArray.find(
+          (strategy) => strategy.View === selectedView
+        );
+        const strategies = selectedStrategyObj?.Value[selectedDate] || [];
+
+        if (strategies.length === 0) {
+          emptyState.style.display = "block";
+          emptyState.innerHTML = `There are no strategies for <br> <b>${selectedDate}</b>`;
+          strategyList.style.display = "none";
+        } else {
+          strategyList.style.display = "flex";
+          emptyState.style.display = "none";
+
+          // Create a map to count occurrences of each strategy
+          const strategyCountMap = strategies.reduce((acc, strategy) => {
+            acc[strategy] = (acc[strategy] || 0) + 1;
+            return acc;
+          }, {});
+
+          // Display strategy cards
+          for (const [strategy, count] of Object.entries(strategyCountMap)) {
+            const card = document.createElement("div");
+            card.classList.add("strategy-card");
+            card.innerHTML = `${strategy} <small>&#x2022; ${count} ${
+              count > 1 ? "Strategies" : "Strategy"
+            }</small>`;
+            strategyList.appendChild(card);
+          }
+        }
+      };
+
+      // Initialize the app
+      const init = async () => {
+        const data = await fetchData("data.json");
+        if (data) {
+          populateViewButtons(data);
+          populateDateDropdown(data);
+          updateStrategyList(data); // Show strategies for the default view and date
+        }
+      };
+
+      // Run the initialization function on page load
+      init();
+    </script>
+  </body>
+</html>
